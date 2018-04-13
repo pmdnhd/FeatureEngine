@@ -20,18 +20,33 @@ import scala.math.{cos, Pi}
 
 /**
  * HammingWindow, extending the [[SpectrogramWindow]] trait
- * Author: Joseph Allemandou, Paul NGuyenhongduc
+ * A hamming window can be compute in two ways:
+ *  - symmetric used for filter design,
+ *   w(n) = 0.54 - 0.46 * cos(2* Pi * n / N) where 0 <= n <= N and N = windowLength - 1
+ *  - periodic used for spectral analysis because it extends discrete Fourier transform periodicity,
+ *   w(n) = 0.54 - 0.46 * cos(2* Pi * n / N) where N/2 <= n <= N/2 - 1 and N = windowLength
+ *
+ * Author: Joseph Allemandou, Paul NGuyenhongduc, Alexandre Degurse
  *
  * Hamming coefficients function defined in companion object 
  * and used to precompute coefficients for a given instance of window.
+ *
+ * @param windowSize The size of the window to be computed
+ * @param hammingType The type of hamming window to compute, either periodic or symmetric
  */
 
-class HammingWindow(val windowSize: Int) extends SpectrogramWindow {
-  val windowCoefficients: Array[Double] =
-    (0 until windowSize).map(idx => HammingWindow.coefficient(idx, windowSize)).toArray
+class HammingWindow(val windowSize: Int, val hammingType: String) extends SpectrogramWindow {
+  val windowCoefficients: Array[Double] = hammingType match {
+    case "periodic" => (0 until windowSize).map(idx => HammingWindow.coefficientPeriodic(idx, windowSize)).toArray
+    case "symmetric" => (0 until windowSize).map(idx => HammingWindow.coefficientSymmetric(idx, windowSize)).toArray
+    case _ => throw new IllegalArgumentException(s"Unknown type (${hammingType}) for HammingWindow (periodic,symmetric)")
+  }
+    
 }
 
 object HammingWindow {
-  // Generate the i-th coefficient of a N-point Hamming window
-  def coefficient(idx: Int, windowSize: Int): Double = 0.54 - 0.46 * cos(2 * Pi * idx / (windowSize - 1))
+  // Generate the i-th coefficient of a N-point periodic Hamming window
+  def coefficientPeriodic(idx: Int, windowSize: Int): Double = 0.54 - 0.46 * cos(2 * Pi * idx / (windowSize - 1))
+  // Generate the i-th coefficient of a N-point symmetric Hamming window
+  def coefficientSymmetric(idx: Int, windowSize: Int): Double = 0.54 + 0.46 * cos(Pi * (2*idx - windowSize) / windowSize)
 }

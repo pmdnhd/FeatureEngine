@@ -19,18 +19,27 @@ package org.ode.engine.signal_processing;
 
 /**
   * Class that provides segmention functions
-  * 
+  *
   * For now, its feature are limited to a simple segmentation that drops
-  * incomple windows and doesn't support overlap.
-  * New features will come in the near future
+  * incomple windows and support only overlap in samples.
   *
   * Author: Alexandre Degurse
-  * 
+  *
   * @param winSize The size of a window
+  * @param offset The offset used to slide the window over the signal (in number of values).
   *
   */
 
-class Segmentation(val winSize: Int) {
+class Segmentation(val winSize: Int, val offset: Option[Int] = None) {
+
+  if (winSize < 0) {
+    throw new IllegalArgumentException(s"Incorrect winSize for segmentation (${winSize})")
+  }
+
+  if (offset.getOrElse(winSize) > winSize || offset.getOrElse(winSize) <= 0) {
+    throw new IllegalArgumentException(s"Incorrect offset for segmentation (${offset.getOrElse(winSize)})")
+  }
+
 
   /**
    * Funtion that segmentates a signal and drops incomplete windows
@@ -38,16 +47,20 @@ class Segmentation(val winSize: Int) {
    * @return The segmented signal as a Array[Array[Double]]
    */
   def compute(signal: Array[Double]) : Array[Array[Double]] = {
-    
+
+  if (signal.length < winSize) {
+    throw new IllegalArgumentException(s"Incorrect signal length for segmentation (${signal.length}), winSize is greater (${winSize})")
+  }
+
     // nWindows is the number of complete windows that will be generated
-    var nWindows: Int = signal.length / winSize
+    var nWindows: Int = 1 + (signal.length - winSize) / offset.getOrElse(winSize)
 
     val segmentedSignal: Array[Array[Double]] = Array.ofDim[Double](nWindows, winSize)
-    
+
     var i: Int = 0
 
     while (i < nWindows) {
-      Array.copy(signal, i*winSize, segmentedSignal(i), 0, winSize)
+      Array.copy(signal, i * offset.getOrElse(winSize), segmentedSignal(i), 0, winSize)
       i += 1
     }
 

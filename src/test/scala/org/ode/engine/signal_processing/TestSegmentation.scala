@@ -26,14 +26,14 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class TestSegmentation extends FlatSpec with Matchers {
 
-  "Segmentation" should "compute a segmentated signal without overlap nor partial window" in {
+  "Segmentation" should "segment a signal without offset nor partial window" in {
     val signal: Array[Double] = (1.0 to 100.0 by 1.0).toArray
     val segmentationClass: Segmentation = new Segmentation(10)
 
-    val expectedSegmentedSignal: Array[Array[Double]] = 
+    val expectedSegmentedSignal: Array[Array[Double]] =
       (1.0 to 100.0 by 10.0)
         .map(x => (x to x + 9.0 by 1.0).toArray)
-        .toArray 
+        .toArray
 
     val segmentatedSignal = segmentationClass.compute(signal)
 
@@ -43,14 +43,14 @@ class TestSegmentation extends FlatSpec with Matchers {
       )
   }
 
-  it should "compute a segmentated signal without overlap and drop partial window" in {
+  it should "segment a signal without offset and drop partial window" in {
     val signal: Array[Double] = (1.0 to 110.0 by 1.0).toArray
     val segmentationClass: Segmentation = new Segmentation(25)
 
-    val expectedSegmentedSignal: Array[Array[Double]] = 
+    val expectedSegmentedSignal: Array[Array[Double]] =
       (1.0 to 100.0 by 25.0)
         .map(x => (x to x + 24.0 by 1.0).toArray)
-        .toArray 
+        .toArray
 
     val segmentatedSignal = segmentationClass.compute(signal)
 
@@ -58,5 +58,49 @@ class TestSegmentation extends FlatSpec with Matchers {
       .foreach(
         wins => wins._1 should be(wins._2)
       )
+  }
+
+  it should "segment a signal with offset and drop partial window" in {
+    val signal: Array[Double] = (1.0 to 23.0 by 1.0).toArray
+    val segmentationClass: Segmentation = new Segmentation(10, Some(2))
+
+    val expectedSegmentedSignal: Array[Array[Double]] =
+      (1.0 to 13.0 by 2.0)
+        .map(x => (x to x + 9.0 by 1.0).toArray)
+        .toArray
+
+    val segmentatedSignal = segmentationClass.compute(signal)
+
+    segmentatedSignal.zip(expectedSegmentedSignal)
+      .foreach(
+        wins => wins._1 should be(wins._2)
+      )
+  }
+
+  it should "raise IllegalArgumentException when winSize equals 0" in {
+    an [IllegalArgumentException] should be thrownBy new Segmentation(0, Some(42))
+  }
+
+  it should "raise IllegalArgumentException when winSize smaller 0" in {
+    an [IllegalArgumentException] should be thrownBy new Segmentation(-42, Some(42))
+  }
+
+  it should "raise IllegalArgumentException when offset greater winSize" in {
+    an [IllegalArgumentException] should be thrownBy new Segmentation(10, Some(42))
+  }
+
+  it should "raise IllegalArgumentException when offset equals 0" in {
+    an [IllegalArgumentException] should be thrownBy new Segmentation(10, Some(0))
+  }
+
+  it should "raise IllegalArgumentException when offset smaller 0" in {
+    an [IllegalArgumentException] should be thrownBy new Segmentation(10, Some(-42))
+  }
+
+  it should "raise IllegalArgumentException when signal is smaller than winSize" in {
+    val aggClass = new Segmentation(10, Some(2))
+    val signal = Array(1.0)
+
+    an [IllegalArgumentException] should be thrownBy aggClass.compute(signal)
   }
 }

@@ -16,10 +16,10 @@
 
 package org.ode.engine.signal_processing
 
-import scala.math.{cos,Pi,pow,abs,sqrt}
+import scala.math.{pow, log10}
 
 /**
-  * Class computing energy from signal information.
+  * Class computing energy and Sound Pressure Level from signal information.
   * Can be used over raw signal, FFT one-sided, or PSD.
   *
   * Author: Alexandre Degurse
@@ -28,23 +28,37 @@ import scala.math.{cos,Pi,pow,abs,sqrt}
 
 class Energy(val nfft: Int) {
 
-  val expectedFFTSize = nfft + (if (nfft % 2 == 0) 2 else 1)
+  val nfftEven: Boolean = nfft % 2 == 0
+  val expectedFFTSize = nfft + (if (nfftEven) 2 else 1)
   val expectedPSDSize = expectedFFTSize / 2
 
-  def fromRawSignal(signal: Array[Double]): Double = {
+
+  /**
+    * Function that provide computation for the energy of a raw signal
+    *
+    * @param signal The raw signal to process as an Array[Double]
+    * @return The energy of the input raw signal as a Double
+    */
+  def computeRawFromRawSignal(signal: Array[Double]): Double = {
     if (signal.length > nfft) {
       throw new IllegalArgumentException(s"Incorrect signal size (${signal.length}) for Energy (${nfft})")
     }
     signal.foldLeft(0.0)((acc, v) => acc + pow(v,2))
   }
 
-  def fromFFT(fft: Array[Double]): Double = {
+
+  /**
+    * Function that provide computation for the energy of a FFT
+    *
+    * @param fft The one-sided FFT to process as an Array[Double]
+    * @return The energy of the input FFT as a Double
+    */
+  def computeRawFromFFT(fft: Array[Double]): Double = {
 
     if (fft.length != expectedFFTSize) {
       throw new IllegalArgumentException(s"Incorrect fft size (${fft.length}) for Energy (${expectedFFTSize})")
     }
 
-    val nfftEven = (nfft % 2 == 0)
     var energy = 0.0
 
     // start at 1 to not duplicate DC
@@ -72,11 +86,55 @@ class Energy(val nfft: Int) {
     energy / nfft
   }
 
-  def fromPSD(psd: Array[Double]): Double = {
+  /**
+    * Function that provide computation for the energy of a PSD
+    *
+    * @param psd The PSD to process as an Array[Double]
+    * @return The energy of the input PSD as a Double
+    */
+  def computeRawFromPSD(psd: Array[Double]): Double = {
     if (psd.length != expectedPSDSize) {
       throw new IllegalArgumentException(s"Incorrect PSD size (${psd.length}) for Energy (${expectedPSDSize})")
     }
 
     psd.sum
   }
+
+
+  /**
+   * Function that provide computation for Sound Pressure Level
+   * Wrapper over converting raw energy to db
+   *
+   * @param signal The raw signal to process as an Array[Double]
+   * @return The Sound Pressure Level of the input raw signal as a Double
+   */
+  def computeSPLFromRawSignal(signal: Array[Double]): Double = Energy.toDB(computeRawFromRawSignal(signal))
+
+  /**
+   * Function that provide computation for Sound Pressure Level
+   * Wrapper over converting raw energy to db
+   *
+   * @param signal The FFT to process as an Array[Double]
+   * @return The Sound Pressure Level of the input FFT as a Double
+   */
+  def computeSPLFromFFT(fft: Array[Double]): Double = Energy.toDB(computeRawFromFFT(fft))
+
+  /**
+   * Function that provide computation for Sound Pressure Level
+   * Wrapper over converting raw energy to db
+   *
+   * @param signal The PSD to process as an Array[Double]
+   * @return The Sound Pressure Level of the input PSD as a Double
+   */
+  def computeSPLFromPSD(psd: Array[Double]): Double = Energy.toDB(computeRawFromPSD(psd))
+}
+
+object Energy {
+  /**
+   * Function converting raw energy to dB scale
+   *
+   * @param value The value to convert to log scala as a Double
+   * @return The value converted to log scale as a Double
+   */
+  def toDB(value: Double): Double = 10.0 * log10(value)
 }

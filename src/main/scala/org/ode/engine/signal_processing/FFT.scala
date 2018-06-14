@@ -27,9 +27,10 @@ import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D
   */
 
 
-class FFT(nfft: Int) {
+case class FFT(nfft: Int) extends Serializable {
 
   // Instantiate the low level class that computes the fft
+  @transient
   val lowLevelFtt: DoubleFFT_1D = new DoubleFFT_1D(nfft)
 
   val nfftEven: Boolean = nfft % 2 == 0

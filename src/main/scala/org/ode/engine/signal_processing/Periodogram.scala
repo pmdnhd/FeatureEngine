@@ -28,7 +28,7 @@ package org.ode.engine.signal_processing
   * @param normalizationFactor The normalization factor of the PSD, depends on the used method.
   */
 
-class Periodogram(val nfft: Int, val normalizationFactor: Double) {
+case class Periodogram(val nfft: Int, val normalizationFactor: Double) extends Serializable {
 
   val nfftEven: Boolean = nfft % 2 == 0
   // compute number of unique samples in the transformed FFT

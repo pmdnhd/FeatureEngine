@@ -48,7 +48,6 @@ case class HammingWindow(windowSize: Int, hammingType: String) extends Spectrogr
     case _ => throw new IllegalArgumentException(
       s"Unknown HammingWindow type ($hammingType), it should be 'periodic' or 'symmetric'")
   }
-
 }
 
 /**

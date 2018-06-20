@@ -99,6 +99,19 @@ class TestHammingWindow extends FlatSpec with Matchers {
     rmse(expectedWindow,window) should be < maxRMSE
   }
 
+  it should "compute the right normalization factor for hamming window" in {
+    val hw = new HammingWindow(32,"periodic")
+    val normalizationFactor = hw.normalizationFactor(1.75)
+
+    /**
+     * h = scipy.signal.hamming(32,"periodic")
+     * numpy.sum(h * h) / (1.75 ** 2)
+     */
+    val expectedNormFactor = 4.024751020408163
+
+    rmse(expectedNormFactor,normalizationFactor) should be < maxRMSE
+  }
+
   it should "rmse-match a transformed signal as in numpy" in {
     // numpy.hamming(32) * np.arange(1,33) or scipy.signal.hamming(32) * np.arange(1,33)
     val expectedWindowedSignal = Array(

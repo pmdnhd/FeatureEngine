@@ -10,12 +10,14 @@ cache:
 language: scala
 
 scala:
-  - 2.11.8
+  - 2.11.12
 
 script:
   - sbt compile
-  - sbt test
+  - sbt coverage test
   - sbt scalastyle
+
+after_success: "sbt coverageReport coveralls"
 
 # Send notifs to slack
 notifications:

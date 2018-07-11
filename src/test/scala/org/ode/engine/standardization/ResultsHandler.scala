@@ -20,6 +20,7 @@ import java.io.{File, FileInputStream, InputStream}
 import scala.io.Source
 
 import org.ode.engine.signal_processing._
+import org.ode.engine.signal_processing.windowfunctions._
 
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -52,14 +53,16 @@ case class ResultsHandler (
   // instanciate the signal_processing classes
   private val segmentation = new Segmentation(winSize, Some(offset))
 
-  private val hammingSymmetric = new HammingWindow(winSize, "symmetric")
-  private val hammingPeriodic = new HammingWindow(winSize, "periodic")
-  private val hammingScalingSymmetric = hammingSymmetric.normalizationFactor(1.0)
+  private val hammingSymmetric = new HammingWindowFunction(winSize, "symmetric")
+
+  private val hammingPeriodic = new HammingWindowFunction(winSize, "periodic")
+  private val hammingDensityPeriodicNormFactor = hammingPeriodic.densityNormalizationFactor(1.0)
+  private val hammingSpectrumPeriodicNormFactor = hammingPeriodic.spectrumNormalizationFactor(1.0)
 
   private val fftClass = new FFT(nfft, sound.samplingRate)
   private val periodogramClassNormInDensity = new Periodogram(
     nfft,
-    1 / (sound.samplingRate.toDouble * hammingScalingSymmetric),
+    1 / (sound.samplingRate.toDouble * hammingDensityPeriodicNormFactor),
     sound.samplingRate
   )
   private val welchClass = new WelchSpectralDensity(nfft, sound.samplingRate)
@@ -79,16 +82,15 @@ case class ResultsHandler (
     val signal = sound.readSound()
 
     val ffts = segmentation.compute(signal)
-      .map(segment => hammingSymmetric.applyToSignal(segment))
+      .map(segment => hammingPeriodic.applyToSignal(segment))
       .map(win => fftClass.compute(win))
 
     algo match {
       case "vFFT" => {
         // Scipy Short Time Fourier Transform normalizes the ffts using the
-        // sqrt of the normalizationFactor used to normalize Power Spectrum.
-        val norm = 1.0 / math.sqrt(math.pow(hammingSymmetric.windowCoefficients.sum, 2))
+        // sqrt of the spectrum normalization factor
 
-        ffts.map(fft => fft.map(_ * norm))
+        ffts.map(fft => fft.map(_ / math.sqrt(hammingSpectrumPeriodicNormFactor)))
       }
 
       case "vPSD" => {

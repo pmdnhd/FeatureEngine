@@ -25,6 +25,7 @@ import org.joda.time.Days
 
 import org.ode.engine.io.WavReader
 import org.ode.engine.signal_processing._
+import org.ode.engine.signal_processing.windowfunctions._
 
 /**
  * Class that provides a simple signal processing workflow without using Spark.
@@ -114,10 +115,10 @@ class ScalaSampleWorkflow
       soundStartDate)
 
     val segmentationClass = new Segmentation(segmentSize, Some(segmentOffset))
-    val hammingClass = new HammingWindow(segmentSize, "symmetric")
+    val hammingClass = new HammingWindowFunction(segmentSize, "symmetric")
+    val hammingNormalizationFactor = hammingClass.densityNormalizationFactor()
+
     val fftClass = new FFT(nfft, soundSamplingRate)
-    val hammingNormalizationFactor = hammingClass.windowCoefficients
-      .foldLeft(0.0)((acc, v) => acc + v*v)
     val periodogramClass = new Periodogram(
       nfft, 1.0/(soundSamplingRate*hammingNormalizationFactor), 1.0f
     )

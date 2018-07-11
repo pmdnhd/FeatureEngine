@@ -31,6 +31,7 @@ import org.joda.time.Days
 import java.sql.Timestamp
 
 import org.ode.engine.signal_processing._
+import org.ode.engine.signal_processing.windowfunctions._
 
 /**
  * Performance test workflow for Spark over Datarmor.
@@ -167,9 +168,8 @@ class PerformanceTestWorkflow
 
     val segmentationClass = new Segmentation(segmentSize, Some(segmentOffset))
     val fftClass = new FFT(nfft, 1.0f)
-    val hammingClass = new HammingWindow(segmentSize, "symmetric")
-    val hammingNormalizationFactor = hammingClass.windowCoefficients
-      .map(x => x*x).foldLeft(0.0)((acc, v) => acc + v)
+    val hammingClass = new HammingWindowFunction(segmentSize, "symmetric")
+    val hammingNormalizationFactor = hammingClass.densityNormalizationFactor()
 
     val periodogramClass = new Periodogram(
       nfft,

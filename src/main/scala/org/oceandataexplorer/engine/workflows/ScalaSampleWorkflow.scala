@@ -77,7 +77,7 @@ class ScalaSampleWorkflow
     val recordSize = (recordDurationInSec * soundSamplingRate).toInt
     val chunks: Seq[Array[Array[Double]]] = wavReader.readChunks(recordSize)
 
-    // drop last record if imcomplete
+    // drop last record if incomplete
     val completeChunks = if (chunks.head.head.length != chunks.last.last.length) {
       chunks.dropRight(1)
     } else {
@@ -86,7 +86,7 @@ class ScalaSampleWorkflow
 
     completeChunks.zipWithIndex
       .map{case (record, idx) =>
-        (startTime + ((1000.0f * idx * recordSize).toFloat / soundSamplingRate).toLong, record)
+        (startTime + (1000.0f * idx * recordSize / soundSamplingRate).toLong, record)
       }.toArray
   }
 
@@ -117,18 +117,18 @@ class ScalaSampleWorkflow
       soundSampleSizeInBits,
       soundStartDate)
 
-    val soundCalibrationClass = new SoundCalibration(soundCalibrationFactor)
-    val segmentationClass = new Segmentation(windowSize, windowOverlap)
-    val hammingClass = new HammingWindowFunction(windowSize, Periodic)
+    val soundCalibrationClass = SoundCalibration(soundCalibrationFactor)
+    val segmentationClass = Segmentation(windowSize, windowOverlap)
+    val hammingClass = HammingWindowFunction(windowSize, Periodic)
     val hammingNormalizationFactor = hammingClass.densityNormalizationFactor()
 
-    val fftClass = new FFT(nfft, soundSamplingRate)
-    val periodogramClass = new Periodogram(
+    val fftClass = FFT(nfft, soundSamplingRate)
+    val periodogramClass = Periodogram(
       nfft, 1.0/(soundSamplingRate*hammingNormalizationFactor), 1.0f
     )
-    val welchClass = new WelchSpectralDensity(nfft, soundSamplingRate)
-    val tolClass = new TOL(nfft, soundSamplingRate, lowFreq, highFreq)
-    val energyClass = new Energy(nfft)
+    val welchClass = WelchSpectralDensity(nfft, soundSamplingRate)
+    val tolClass = TOL(nfft, soundSamplingRate, lowFreq, highFreq)
+    val energyClass = Energy(nfft)
 
     val ffts = records
       .map{case (idx, channels) => (idx, channels.map(soundCalibrationClass.compute))}

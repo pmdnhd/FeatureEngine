@@ -16,10 +16,15 @@
 
 package org.oceandataexplorer.engine.tmp
 
-import collection.JavaConverters._
+import org.apache.spark.sql.SparkSession
+
+import scala.collection.JavaConverters._
+import scala.reflect.runtime.universe._
 import ucar.nc2.NetcdfFile
+import ucar.ma2.Section
 
 import org.scalatest.{FlatSpec, Matchers}
+import com.holdenkarau.spark.testing.SharedSparkContext
 import org.oceandataexplorer.utils.test.OdeCustomMatchers
 
 /**
@@ -27,7 +32,11 @@ import org.oceandataexplorer.utils.test.OdeCustomMatchers
  *
  * @author Alexandre Degurse
  */
-class TestReadingNetcdf extends FlatSpec with Matchers with OdeCustomMatchers {
+class TestReadingNetcdf extends FlatSpec
+  with Matchers
+  with OdeCustomMatchers
+  with SharedSparkContext
+{
 
   /**
    * Maximum error allowed for [[OdeCustomMatchers.RmseMatcher]]
@@ -75,20 +84,75 @@ class TestReadingNetcdf extends FlatSpec with Matchers with OdeCustomMatchers {
         actual shouldEqual expected
       }
 
-    val expectedWind = (0 until 20 by 1).toArray.map(t =>
+    val expectedWind = (0 until 20 by 1).toArray.flatMap(t =>
       (-10.0f to -1.0f by 1.0f).toArray.map(lon =>
         (1.0f to 10.0f by 1.0f).toArray.map(lat =>
           math.cos(t) * math.sin(lat * lon)
         )
       )
-    ).flatten.flatten
+    ).flatten
 
     val wind = windIntensity
-      .map(timeSlice => timeSlice.map(lonSlice => lonSlice.map(_.toDouble)))
-      .flatten.flatten
+      .flatMap(timeSlice => timeSlice.map(lonSlice => lonSlice.map(_.toDouble)))
+      .flatten
 
     // high rmse because values were saved as Float
     wind should rmseMatch(expectedWind)
+  }
 
+  "test.nc" should "be h5spark style readable" in {
+    val spark = SparkSession.builder.getOrCreate
+    val sc = spark.sparkContext
+
+    val testNcFilePath = getClass.getResource("/netcdf/test.nc").toString
+
+    val ncf = NetcdfFile.open(testNcFilePath)
+    val vars = ncf.getRootGroup.getVariables.asScala
+    val windIntensity = vars.find(v => v.getName == "wind_intensity").get
+
+    // in this example, dims = Array(20, 10, 10)
+    val dims = windIntensity.getShape
+
+    val numPartitions = 5
+
+    val wind = sc.range(0, dims(0), 1, numPartitions).flatMap{i =>
+      val s = new Section({
+        val start = Array.ofDim[Int](dims.length)
+        start(0) = i.toInt
+        start},{
+        val range = Array.ofDim[Int](dims.length)
+        dims.copyToArray(range)
+        range(0) = 1
+        range}
+      )
+
+      // Netcdf-java lib classes' are not serializable ...
+      val windObject = NetcdfFile.open(testNcFilePath)
+        .getRootGroup.getVariables.asScala
+        .find(v => v.getName == "wind_intensity").get
+        .read(s)
+        .copyToNDJavaArray
+        // type information with .getClass.getTypeName
+
+      // define the TypeTag of the read object at compile time
+      // next step is to find a way to instantiate it dynamically
+      val typetag = typeTag[Array[Array[Array[Float]]]]
+      def cast[A](a: Any, tt: TypeTag[A]): A = a.asInstanceOf[A]
+
+      cast(windObject, typetag)
+    }
+    .collect()
+    .flatMap(timeSlice => timeSlice.map(lonSlice => lonSlice.map(_.toDouble)))
+    .flatten
+
+    val expectedWind = (0 until 20 by 1).toArray.flatMap(t =>
+      (-10.0f to -1.0f by 1.0f).toArray.map(lon =>
+        (1.0f to 10.0f by 1.0f).toArray.map(lat =>
+          math.cos(t) * math.sin(lat * lon)
+        )
+      )
+    ).flatten
+
+    wind should rmseMatch(expectedWind)
   }
 }

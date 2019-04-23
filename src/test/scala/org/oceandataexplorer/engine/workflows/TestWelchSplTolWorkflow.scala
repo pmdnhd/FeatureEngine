@@ -46,7 +46,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 16000
     val windowOverlap = 0
@@ -63,7 +63,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -80,7 +80,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplTolWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft,
@@ -93,7 +93,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
       soundSamplingRate
     )
 
-    val expectedRecordNumber = (soundDurationInSecs / recordSizeInSec).toInt
+    val expectedRecordNumber = (soundDurationInSecs / segmentDuration).toInt
     val expectedFFTSize = nfft + 2 // nfft is even
     val expectedNumTolBand = 4
 
@@ -129,7 +129,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 6000
     val windowOverlap = 3000
@@ -146,7 +146,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
    val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -163,7 +163,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplTolWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft,
@@ -213,7 +213,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
     val tols = sparkTs.zip(sparkTOLs)
 
     val scalaWorkflow = new ScalaSampleWorkflow(
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft,
@@ -242,7 +242,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 16000
     val windowOverlap = 0
@@ -259,7 +259,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -276,7 +276,7 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplTolWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft
@@ -299,5 +299,29 @@ class TestWelchSplTolWorkflow extends FlatSpec
 
     duration shouldEqual 1000
     lastRecordStartDate shouldEqual expectedLastRecordDate
+  }
+
+  it should "raise an IllegalArgumentException when trying to compute TOL on with recordDuration < 1.0 sec" in {
+    val spark = SparkSession.builder.getOrCreate
+
+    // Signal processing parameters
+    val segmentDuration = 0.1f
+    val windowSize = 256
+    val windowOverlap = 0
+    val nfft = 256
+    val lowFreqTOL = Some(20.0)
+    val highFreqTOL = Some(40.0)
+
+    the[IllegalArgumentException] thrownBy {
+       new WelchSplTolWorkflow(
+        spark,
+        segmentDuration,
+        windowSize,
+        windowOverlap,
+        nfft,
+        lowFreqTOL,
+        highFreqTOL
+      )
+    } should have message "Incorrect segmentDuration (0.1) for TOL computation"
   }
 }

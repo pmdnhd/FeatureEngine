@@ -49,7 +49,7 @@ class TestWelchSplWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 16000
     val windowOverlap = 0
@@ -64,7 +64,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -81,7 +81,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft
@@ -92,7 +92,7 @@ class TestWelchSplWorkflow extends FlatSpec
       soundSamplingRate
     )
 
-    val expectedRecordNumber = (soundDurationInSecs / recordSizeInSec).toInt
+    val expectedRecordNumber = (soundDurationInSecs / segmentDuration).toInt
     val expectedFFTSize = nfft + 2 // nfft is even
 
 
@@ -119,7 +119,7 @@ class TestWelchSplWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 0.5f
+    val segmentDuration = 0.5f
     val soundSamplingRate = 16000.0f
     val windowSize = 6000
     val windowOverlap = 3000
@@ -134,7 +134,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
    val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -151,7 +151,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft
@@ -190,7 +190,7 @@ class TestWelchSplWorkflow extends FlatSpec
     val spls = sparkTs.zip(sparkSPLs)
 
     val scalaWorkflow = new ScalaSampleWorkflow(
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft
@@ -215,7 +215,7 @@ class TestWelchSplWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 16000
     val windowOverlap = 0
@@ -232,7 +232,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -249,7 +249,7 @@ class TestWelchSplWorkflow extends FlatSpec
 
     val sampleWorkflow = new WelchSplWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft

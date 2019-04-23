@@ -49,7 +49,7 @@ class TestTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val lowFreqTOL = Some(3000.0)
     val highFreqTOL = Some(7000.0)
@@ -63,7 +63,7 @@ class TestTolWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -80,7 +80,7 @@ class TestTolWorkflow extends FlatSpec
 
     val tolWorkflow = new TolWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       lowFreqTOL,
       highFreqTOL
     )
@@ -90,7 +90,7 @@ class TestTolWorkflow extends FlatSpec
       soundSamplingRate
     )
 
-    val expectedRecordNumber = (soundDurationInSecs / recordSizeInSec).toInt
+    val expectedRecordNumber = (soundDurationInSecs / segmentDuration).toInt
     val expectedNumTob = 4
 
 
@@ -109,7 +109,7 @@ class TestTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 1.0f
+    val segmentDuration = 1.0f
     val soundSamplingRate = 16000.0f
     val windowSize = 512
     val windowOverlap = 128
@@ -126,7 +126,7 @@ class TestTolWorkflow extends FlatSpec
 
     val hadoopWavReader = new HadoopWavReader(
       spark,
-      recordSizeInSec
+      segmentDuration
     )
 
     val records = hadoopWavReader.readWavRecords(
@@ -143,7 +143,7 @@ class TestTolWorkflow extends FlatSpec
 
     val tolWorkflow = new TolWorkflow(
       spark,
-      recordSizeInSec,
+      segmentDuration,
       lowFreqTOL,
       highFreqTOL
     )
@@ -172,7 +172,7 @@ class TestTolWorkflow extends FlatSpec
     val tols = sparkTs.zip(sparkTOLs)
 
     val scalaWorkflow = new ScalaSampleWorkflow(
-      recordSizeInSec,
+      segmentDuration,
       windowSize,
       windowOverlap,
       nfft,
@@ -197,17 +197,17 @@ class TestTolWorkflow extends FlatSpec
     val spark = SparkSession.builder.getOrCreate
 
     // Signal processing parameters
-    val recordSizeInSec = 0.1f
+    val segmentDuration = 0.1f
     val lowFreqTOL = Some(20.0)
     val highFreqTOL = Some(40.0)
 
     the[IllegalArgumentException] thrownBy {
        new TolWorkflow(
         spark,
-        recordSizeInSec,
+        segmentDuration,
         lowFreqTOL,
         highFreqTOL
       )
-    } should have message "Incorrect recordDurationInSec (0.1) for TOL computation"
+    } should have message "Incorrect segmentDuration (0.1) for TOL computation"
   }
 }

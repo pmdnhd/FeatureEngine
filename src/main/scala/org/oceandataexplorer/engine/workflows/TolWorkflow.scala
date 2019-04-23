@@ -37,7 +37,7 @@ import org.oceandataexplorer.engine.signalprocessing.windowfunctions.WindowFunct
  * @author Alexandre Degurse, Joseph Allemandou
  *
  * @param spark The SparkSession to use to build resulting RDDs
- * @param recordDurationInSec The duration of a record in the workflow in seconds
+ * @param segmentDuration The duration of a segment in the workflow in seconds
  * @param lowFreqTOL The lower boundary of the frequency range to study for TOL computation
  * @param highFreqTOL The upper boundary of the frequency range to study for TOL computation
  * @param lastRecordAction The action to perform when a partial record is encountered
@@ -48,15 +48,15 @@ import org.oceandataexplorer.engine.signalprocessing.windowfunctions.WindowFunct
 class TolWorkflow
 (
   val spark: SparkSession,
-  val recordDurationInSec: Float,
+  val segmentDuration: Float,
   val lowFreqTOL: Option[Double] = None,
   val highFreqTOL: Option[Double] = None,
   val lastRecordAction: LastRecordAction = Skip
 ) {
 
-  if (recordDurationInSec < 1.0f) {
+  if (segmentDuration < 1.0f) {
     throw new IllegalArgumentException(
-      s"Incorrect recordDurationInSec ($recordDurationInSec) for TOL computation"
+      s"Incorrect segmentDuration ($segmentDuration) for TOL computation"
     )
   }
 

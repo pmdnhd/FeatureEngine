@@ -18,6 +18,7 @@ package org.oceandataexplorer.engine.signalprocessing
 
 /**
  * Class that provides spectrogram to match sspectro R function from the seewave R package introduced by Sueur et al., 2008
+ * in order to compute Acoustic Complexity Index from the same package
  *
  * @author Paul Nguyen HD, Alexandre Degurse
  *

@@ -69,7 +69,7 @@ case class SpectrogramAcousticIndices
     }
     // scalastyle:on while var.local
 
-    // The first value is dropped according to the sspectro wave function and only frequencies of interest are kept
+    // The first value is dropped according to the sspectro R function and only frequencies of interest are kept
     if (frequencyLimits.isEmpty)
       oneSidedPeriodogram.drop(1)
     else {

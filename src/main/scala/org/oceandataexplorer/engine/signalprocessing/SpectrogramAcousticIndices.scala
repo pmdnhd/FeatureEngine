@@ -67,15 +67,15 @@ case class SpectrogramAcousticIndices
       i2 = 2*i
       i2p1 = i2 + 1
     }
+
     // scalastyle:on while var.local
 
-    // The first value is dropped according to the sspectro R function and only frequencies of interest are kept
-    if (frequencyLimits.isEmpty)
+    // The first value is dropped according to the spectro R function
+    // and only frequencies of interest are kept
+    if (frequencyLimits.isEmpty) {
       oneSidedPeriodogram.drop(1)
-    else {
+    } else {
       val flimInkHz = frequencyLimits.map(x => x *1000 * nfft / samplingRate)
-      println(math.floor(flimInkHz.head).toInt)
-      println(flimInkHz.last.toInt)
       oneSidedPeriodogram.slice(math.floor(flimInkHz.head).toInt,flimInkHz.last.toInt).drop(1)
     }
   }

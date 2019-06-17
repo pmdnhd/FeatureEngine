@@ -27,22 +27,24 @@ import org.oceandataexplorer.engine.signalprocessing.windowfunctions.WindowFunct
 import org.oceandataexplorer.engine.signalprocessing.windowfunctions._
 
 /**
-  * Acoustic Complexity Index (ACI) workflow in spark over single channel sound files
-  * Computes ACIs over a mono calibrated signal.
-  *
-  * @author Alexandre Degurse, Joseph Allemandou
-  *
-  * @param spark The SparkSession to use to build resulting RDDs
-  * @param recordDurationInSec The duration of a record in the workflow in seconds
-  * @param windowSize The size of the segments to be generated
-  * @param windowOverlap The generated segments overlap
-  * @param nfft The size of the fft-computation window
-  * @param nbWindows The number of windows to compute ACI over in the record duration of the signal to process
-  * @param frequencyLimits The boundaries of the frequency range to study for ACI computation
-  * @param lastRecordAction The action to perform when a partial record is encountered
-  *
-  */
-class ACIWorkflow(
+ * Acoustic Complexity Index (ACI) workflow in spark over single channel sound files
+ * Computes ACIs over a mono calibrated signal.
+ *
+ * @author Paul Nguyen HD, Alexandre Degurse, Joseph Allemandou
+ *
+ * @param spark The SparkSession to use to build resulting RDDs
+ * @param recordDurationInSec The duration of a record in the workflow in seconds
+ * @param windowSize The size of the segments to be generated
+ * @param windowOverlap The generated segments overlap
+ * @param nfft The size of the fft-computation window
+ * @param nbWindows The number of windows to compute ACI over in the record duration
+ *   of the signal to process
+ * @param frequencyLimits The boundaries of the frequency range to study for ACI computation
+ * @param lastRecordAction The action to perform when a partial record is encountered
+ *
+ */
+class ACIWorkflow
+(
   val spark: SparkSession,
   val recordDurationInSec: Float,
   val windowSize: Int,
@@ -60,27 +62,29 @@ class ACIWorkflow(
     StructField("timestamp", TimestampType, nullable = true),
     StructField("acis", MultiChannelsFeatureType, nullable = false)
   ))
+
   /**
-    * Apply method for the workflow
-    *
-    * @param calibratedRecords The input calibrated sound signal as a RDD[Record]
-    * @param soundSamplingRate Sound's samplingRate
-    * @return The computed features (ACIs if defined) over the wav
-    * files given in soundUri as a DataFrame of Row(timestamp, acis) or
-    * Row(timestamp, acis).
-    * The channels are kept inside the tuple value to have multiple dataframe columns
-    * instead of a single one with complex content
-    */
+   * Apply method for the workflow
+   *
+   * @param calibratedRecords The input calibrated sound signal as a RDD[Record]
+   * @param soundSamplingRate Sound's samplingRate
+   * @return The computed features (ACIs if defined) over the wav
+   * files given in soundUri as a DataFrame of Row(timestamp, acis) or
+   * Row(timestamp, acis).
+   * The channels are kept inside the tuple value to have multiple dataframe columns
+   * instead of a single one with complex content
+   */
   def apply(
-             calibratedRecords: RDD[Record],
-             soundSamplingRate: Float
-           ): DataFrame = {
+    calibratedRecords: RDD[Record],
+    soundSamplingRate: Float
+  ): DataFrame = {
 
     import spark.implicits._
 
     // classes for ACI computation
     val segmentationClass = Segmentation(nfft, windowOverlap)
     val fftClass = FFT(nfft, soundSamplingRate)
+
     // Be careful windows are Symmetric instead of usual Periodic
     val hammingClass = HammingWindowFunction(nfft, Symmetric)
     val periodogramClass = SpectrogramAcousticIndices(nfft, soundSamplingRate, frequencyLimits)

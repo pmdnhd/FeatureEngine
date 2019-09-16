@@ -19,6 +19,14 @@ package org.oceandataexplorer.engine.signalprocessing
 
 /**
  * Class computing Acoustic Complexity index over one-sided spectrum
+ * of an audio signal
+
+ * Reference: Pieretti N, Farina A, Morri FD (2011) A new methodology
+ * to infer the singing activity of an avian community: the
+ * Acoustic Complexity Index (ACI). Ecological Indicators, 11, 868-873
+ *
+ * Ported from the soundecology R package.
+ *
  * @param nbWindows Number of temporal windows
  */
 case class AcousticComplexityIndex(nbWindows: Int) {
@@ -28,26 +36,50 @@ case class AcousticComplexityIndex(nbWindows: Int) {
    * @param spectrum The one-sided ffts computed by FFT class
    * @return The ACI
    */
-  def compute(spectrum: Array[Array[Double]]): Array[Double] = {
+  def compute(
+    spectrum: Array[Array[Double]],
+    sampleRate: Option[Float] = None,
+    nfft: Option[Int] = None,
+    lowFreqBound: Option[Double] = None,
+    highFreqBound: Option[Double] = None
+  ): Array[Double] = {
     // Extract the total number of columns of the spectrogram
-    val ncol = spectrum.length
+    val spectrumTemporalSize = spectrum.length
 
-    if (ncol <= nbWindows) {
+    if (spectrumTemporalSize < (nbWindows * 2))  {
       throw new IllegalArgumentException(
-        s"Incorrect spectrum length ($ncol) for ACI, must be lower than the" +
-        s"number of windows ($nbWindows)"
+        s"Incorrect spectrum length ($spectrumTemporalSize) for ACI, " +
+        s"must be lower than the number of windows ($nbWindows)"
       )
+    }
+
+    val optionalParams = Array(sampleRate, nfft, lowFreqBound, highFreqBound)
+
+    val spectrumCut = if (
+      optionalParams.map(_.isDefined).reduce((a,b) => a && b)
+    ){
+      spectrum.map(fft => fft.slice(
+        (lowFreqBound.get * nfft.get / sampleRate.get).toInt,
+        (highFreqBound.get * nfft.get / sampleRate.get).toInt
+      ))
+    } else if (optionalParams.map(_.isDefined).reduce((a,b) => a || b)) {
+      throw new IllegalArgumentException(
+        "Some parameters were not defined for the computation of ACI" +
+        "on a specific frequency band."
+      )
+    } else {
+      spectrum
     }
 
     // Divide the number of columns into equal bins
     val times = (1 to nbWindows).map(
-      j => ((ncol / nbWindows.toDouble * (j - 1)).toInt,
-        (ncol / nbWindows.toDouble * j).toInt)
+      j => ((spectrumTemporalSize / nbWindows.toDouble * (j - 1)).toInt,
+        (spectrumTemporalSize / nbWindows.toDouble * j).toInt -1)
     )
 
     // Transpose spectrogram to make computations easier
-    val transposedSpectrum = spectrum
-      .map(spectrum => spectrum.grouped(2)
+    val transposedSpectrum = spectrumCut
+      .map(fft => fft.grouped(2)
         .map(z => math.sqrt(z(0) * z(0) + z(1) * z(1)))
         .toArray
       )
@@ -61,7 +93,9 @@ case class AcousticComplexityIndex(nbWindows: Int) {
 
     while (j <= nbWindows) {
       // sub-spectrums of temporal size
-      val subSpectrums: Array[Array[Double]] = transposedSpectrum.map(row => row.slice(times(j - 1)._1, times(j - 1)._2 + 1))
+      val subSpectrums: Array[Array[Double]] = transposedSpectrum
+        .map(row => row.slice(times(j - 1)._1, times(j - 1)._2 + 1))
+
       // Sum over all the frequencies of the sub-spectrums (denominator of the ACI formula)
       val sums: Array[Double] = subSpectrums.map(_.sum)
 

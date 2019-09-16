@@ -19,10 +19,13 @@
 # Authors: Paul Nguyen HD
 
 
+import sys
 import numpy as np
 from pylab import *
 import scipy.signal
 from SoundHandler import SoundHandler
+import scipy.signal
+import json
 
 
 def compute_spectrogram(
@@ -111,8 +114,12 @@ def compute_ACI(spectro, wl, f, nb_windows, flim=None):
     """
 
     l = spectro.shape[1]
-    times = np.array([(int(l / nb_windows * (j-1) ),
-        int(l / nb_windows * j)) for j in range(1, nb_windows+1)])
+    times = np.array([
+        (int(l / nb_windows * (j-1) ), int(l / nb_windows * j)-1)
+        for j in range(1, nb_windows+1)
+    ])
+
+    print(times)
 
     if flim is not None:
         flim = flim * 1000 * wl/f
@@ -120,6 +127,7 @@ def compute_ACI(spectro, wl, f, nb_windows, flim=None):
 
     # sub-spectros of temporal size j
     jspecs = [np.array(spectro[:, i[0]: i[1] + 1]) for i in times]
+    print(jspecs)
 
     # list of ACI values on each jspecs
     aci = [
@@ -132,25 +140,52 @@ def compute_ACI(spectro, wl, f, nb_windows, flim=None):
 
     return main_value, temporal_values
 
+def formatComplexResults(value):
+    """
+    Results containing complex values are reformatted following
+    the same convention as in FeatureEngine, ie:
+    [z_0, z_1, ... , z_n] => [Re(z_0), Im(z_0), Re(z_1), ... Im(z_n)]
+    """
+    initialShape = value.shape
+
+    nSeg = initialShape[1]
+    segLength = initialShape[0]
+
+    valueAsScalaFormat = np.zeros((nSeg, 2*segLength), dtype=float)
+    valueAsComplex = value.transpose()
+
+    for i in range(nSeg):
+        valueAsScalaFormat[i, ::2] = valueAsComplex[i].real
+        valueAsScalaFormat[i, 1::2] = valueAsComplex[i].imag
+
+    return valueAsScalaFormat
 
 if __name__ == '__main__':
-    # sh = SoundHandler("Sound1", 64, 24, 9811, 3906.0, 1)
-    # signal, fs = sh.read()
-    signal = np.arange(1000)
-    print(len(signal))
-    fs = 1000.0
+    signal = np.arange(16 * 16 + 1)
+    fs = 100.0
 
-    wl = 256
-    ovlp = 0
-    #hop = wl - (ovlp * wl / 100)
-    hop = 256
-    nbWind = 2
+    wl = 16
+    nbWind = 3
 
-    spectrod, freqs = compute_spectrogram(
-        signal, fs, windowLength=wl, windowHop=hop, square=False,
-        windowType='hamming', centered=False, normalized=False
-    )
+    fFFT, vFFT = scipy.signal.stft(
+        x=signal, fs=fs, window='boxcar', noverlap=0,
+        nperseg=wl, nfft=wl, detrend=False,
+        return_onesided=True, boundary=None,
+        padded=False, axis=-1)[::2]
 
-    aci, temp_val = compute_ACI(spectrod, wl, fs, nb_windows= nbWind)
+    spec = abs(vFFT)
+    print(len(spec))
+
+    np.set_printoptions(threshold=sys.maxsize)
+    np.set_printoptions(precision=16)
+    # f = open("/tmp/fftA.json", "w")
+    # f.write(json.dumps(formatComplexResults(vFFT).tolist()))
+    # f.close()
+    # print(formatComplexResults(vFFT))
+
+    fl = np.array([0.03, 0.08])
+    aci, temp_val = compute_ACI(spec, wl, fs, nb_windows= nbWind, flim=fl)
+    print("flim " + str(fl * 1000 * wl/fs))
 
     print(aci)
+    print(temp_val)

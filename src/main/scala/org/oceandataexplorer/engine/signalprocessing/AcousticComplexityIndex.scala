@@ -27,21 +27,31 @@ package org.oceandataexplorer.engine.signalprocessing
  *
  * Ported from the soundecology R package.
  *
- * @param nbWindows Number of temporal windows
+ * @param nbWindows Number of temporal windows desired for ACI
+ * @param samplingRate The sampling rate of the sound signal
+ * @param lowFreqBound The lower bound of the band to analyse with ACI
+ * @param highFreqBound The higher bound of the band to analyse with ACI
  */
-case class AcousticComplexityIndex(nbWindows: Int) {
+case class AcousticComplexityIndex(
+  nbWindows: Int,
+  samplingRate: Option[Float] = None,
+  nfft: Option[Int] = None,
+  lowFreqBound: Option[Double] = None,
+  highFreqBound: Option[Double] = None
+) {
+
+  // Index within the spectrum at which the analysis window starts
+  lazy val analysisWindowStart = (lowFreqBound.get * nfft.get / samplingRate.get).toInt
+  // Index within the spectrum at which the analysis window ends
+  lazy val analysisWindowEnd = (highFreqBound.get * nfft.get / samplingRate.get).toInt
 
   /**
    *
    * @param spectrum The one-sided ffts computed by FFT class
-   * @return The ACI
+   * @return The Acoustic Complexity Index computed over the spectrum
    */
   def compute(
-    spectrum: Array[Array[Double]],
-    sampleRate: Option[Float] = None,
-    nfft: Option[Int] = None,
-    lowFreqBound: Option[Double] = None,
-    highFreqBound: Option[Double] = None
+    spectrum: Array[Array[Double]]
   ): Array[Double] = {
     // Extract the total number of columns of the spectrogram
     val spectrumTemporalSize = spectrum.length
@@ -53,36 +63,41 @@ case class AcousticComplexityIndex(nbWindows: Int) {
       )
     }
 
-    val optionalParams = Array(sampleRate, nfft, lowFreqBound, highFreqBound)
+    val optionalParams = Array(samplingRate, nfft, lowFreqBound, highFreqBound)
 
-    val spectrumCut = if (
+    val (spectrumCut, windowStart, windowEnd) = if (
       optionalParams.map(_.isDefined).reduce((a,b) => a && b)
     ){
-      spectrum.map(fft => fft.slice(
-        (lowFreqBound.get * nfft.get / sampleRate.get).toInt,
-        (highFreqBound.get * nfft.get / sampleRate.get).toInt
-      ))
+      (
+        spectrum.map(fft => fft.slice(
+          analysisWindowStart, analysisWindowEnd
+        )),
+        analysisWindowStart,
+        analysisWindowEnd
+      )
     } else if (optionalParams.map(_.isDefined).reduce((a,b) => a || b)) {
       throw new IllegalArgumentException(
         "Some parameters were not defined for the computation of ACI" +
         "on a specific frequency band."
       )
     } else {
-      spectrum
+      (spectrum, 0, nbWindows)
     }
 
-    // Divide the number of columns into equal bins
-    val times = (1 to nbWindows).map(
-      j => ((spectrumTemporalSize / nbWindows.toDouble * (j - 1)).toInt,
-        (spectrumTemporalSize / nbWindows.toDouble * j).toInt -1)
+    // Divide the number of columns into equal bins within
+    // the analysis frequency range
+    val times = (windowStart until windowEnd).map(
+      j => ((spectrumTemporalSize / nbWindows.toDouble * j).toInt,
+        (spectrumTemporalSize / nbWindows.toDouble * (j + 1)).toInt -1)
     )
 
-    // Transpose spectrogram to make computations easier
+    // Compute amplitude spectrum
     val transposedSpectrum = spectrumCut
       .map(fft => fft.grouped(2)
         .map(z => math.sqrt(z(0) * z(0) + z(1) * z(1)))
         .toArray
       )
+      // Transpose spectrogram to make computations easier
       .transpose
 
     // Array that will be filled by the ACI values of a bin

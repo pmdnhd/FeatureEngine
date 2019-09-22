@@ -59,7 +59,7 @@ case class AcousticComplexityIndex
     && !analysisBandProvided
   ) {
     throw new IllegalArgumentException(
-      "Some parameters were not defined for the computation of ACI" +
+      "Some parameters were not defined for the computation of ACI " +
       "on a specific frequency band."
     )
   }
@@ -85,7 +85,7 @@ case class AcousticComplexityIndex
 
 
   /**
-   * Method compution ACI given a one-sided spectrum.
+   * Method computing ACI given a one-sided spectrum.
    *
    * @param spectrum The one-sided ffts computed by FFT class
    * @return The Acoustic Complexity Index computed over the spectrum
@@ -98,8 +98,8 @@ case class AcousticComplexityIndex
 
     if (spectrumTemporalSize < (nAciWindows * 2))  {
       throw new IllegalArgumentException(
-        s"Incorrect spectrum length ($spectrumTemporalSize) for ACI, " +
-        s"must be lower than the number of windows ($nAciWindows)")}
+        s"Incorrect number of windows ($nAciWindows) for ACI, must be lower " +
+        s"than half the spectrum temporal size ($spectrumTemporalSize)")}
 
     // if a analysis band is specified
     val spectrumToAnalyse = if (analysisBandProvided){
@@ -119,13 +119,9 @@ case class AcousticComplexityIndex
         .toArray).transpose
       // Transpose spectrogram to make computations easier
 
-    // Array that will be filled by the ACI values of a bin
-    val arrayACI = Array.fill(nAciWindows)(0.0)
 
-    // scalastyle:off while var.local
-    var j = 1
-
-    while (j <= nAciWindows) {
+    // Compute ACI for each temporal bin
+    (1 to nAciWindows).toArray.map(j => {
       // sub-spectrums of temporal size
       val subSpectrums: Array[Array[Double]] = transposedSpectrum
         .map(row => row.slice(times(j - 1)._1, times(j - 1)._2 + 1))
@@ -142,13 +138,7 @@ case class AcousticComplexityIndex
             case Array(a, b) => math.abs((a - b) / sums(idx))
           }.toArray}}
 
-
-      // ACI for the sub-spectrum
-      arrayACI(j - 1) = diff.map(_.sum).sum
-      j = j + 1
-    }
-
-    // The total ACI is the sum of the computed ACIs
-    arrayACI
+      diff.map(_.sum).sum
+    })
   }
 }

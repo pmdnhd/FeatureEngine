@@ -181,7 +181,43 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     1.4092934210383288, -0.5177631520107079, 0.6188953791602174,
     -0.7406197315751228, 0.7974885782552832, -0.36171607023579033,
     0.24398014061071538, -0.7030752019503144, 0.22733266891489134,
-    -0.6168793092682564, 0.09024324701215547, -0.2767229372897049, 0.0))
+    -0.6168793092682564, 0.09024324701215547, -0.2767229372897049, 0.0)
+  )
+
+  /*
+    np.random.seed(0)
+    signal = np.arange(64) + np.random.normal(0.1, 1, size=64)
+    fs = 100.0
+    windowSize = 15
+
+    spectrum = scipy.signal.stft(
+        x=signal, fs=fs, window='boxcar', noverlap=0,
+        nperseg=windowSize, nfft=windowSize, detrend=False,
+        return_onesided=True, boundary=None,
+        padded=False, axis=-1)[-1]
+  */
+  val spectrumC = Array(
+    Array(7.78700831731983, 0.0, -0.27222290605029115, 2.2340754178182918,
+      -0.6906360755939576, 0.9842593452943409, -0.5316198085817605,
+      0.7092510713660868, -0.2528528482813781, 0.6310961265083486,
+      -0.23083713968190742, 0.2548598109813492, -0.6567480105361326,
+      0.11668750781337078, -0.3265611969506556, 0.14102090572535447),
+    Array(22.29870457720652, 0.0, -0.2618882875577426, 2.570180922496803,
+      -0.10763946133086565, 1.0826121119407541, -0.7252783992366959,
+      0.7567877630204783, -0.6502544369474063, 0.5602874668209504,
+      -0.26105914876052905, 0.08267489085555571, -0.9863540832096592,
+      0.14951411008484333, -0.440041307873226, -0.20466024170716418),
+    Array(36.86548584209072, 0.0, -0.5873573911668406, 2.2635405532217145,
+      -0.0902999209128596, 1.5026952361298849, -0.47159429120751084,
+      0.6408832279252171, -0.7256532514206997, 0.37476645515028983,
+      -0.6431560513453216, -0.010582043164603937, -0.5340247248822145,
+      0.04784962034022492, -0.25318357726145396, -0.050643370453045775),
+    Array(51.75547044560132, 0.0, -0.5406852410217178, 2.49740423409731,
+      -0.6020558439417473, 1.112783914743024, -0.43501534152557797,
+      0.5439351115210499, -0.6424343125717731, 0.5407301073692216,
+      -0.4668132209915332, 0.3225943860005938, -0.5435880466541562,
+      0.4236178046557305, -0.3161803668997443, 0.22276732270550692)
+  )
 
   it should "compute ACI with 3 windows on spectrumA" in {
     val aciClass = AcousticComplexityIndex(3)
@@ -309,5 +345,40 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
 
     math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
     acis should rmseMatch(expectedAcis)
+  }
+
+  it should "compute ACI with 2 windows on spectrumC with frequency bounds 12.24-31.424 Hz" in {
+    val nbWindows = 2
+    val sampleRate = Some(100.0f)
+    val nfft = Some(15)
+    val lowFreqBound = Some(12.24)
+    val highFreqBound = Some(31.424)
+
+    val aciClass = AcousticComplexityIndex(
+      nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
+    )
+    val acis = aciClass.compute(spectrumC)
+    val aciMainValue = acis.sum
+
+    val expectedAcis = Array(
+      0.3185170503117893, 0.21134923760242902
+    )
+    val expectedAciMainValue = 0.5298662879142183
+
+    math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
+    acis should rmseMatch(expectedAcis)
+  }
+
+  it should "raise IllegalArgumentException when the number of temporal windows exceeds spectrum temporal size" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9)
+      val acis = aciClass.compute(spectrumB)
+    } should have message "Incorrect number of windows (9) for ACI, must be lower than half the spectrum temporal size (16)"
+  }
+
+  it should "raise IllegalArgumentException when some but not all optional parameters are given" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f))
+    } should have message "Some parameters were not defined for the computation of ACI on a specific frequency band."
   }
 }

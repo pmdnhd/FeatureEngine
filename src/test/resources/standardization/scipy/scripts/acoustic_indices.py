@@ -27,119 +27,6 @@ from SoundHandler import SoundHandler
 import scipy.signal
 import json
 
-
-def compute_spectrogram(
-    signal,
-    fs,
-    windowLength=512,
-    windowHop=256,
-    square=True,
-    windowType='hamming',
-    centered=False,
-    normalized=True
-):
-    """
-        From https://github.com/patriceguyot/Acoustic_Indices and modified to
-        match spectro from seewave R package.
-        Compute a spectrogram of an audio signal.
-        Return a list of list of values as the spectrogram,
-        and a list of frequencies.
-
-        Keyword arguments:
-        file -- the real part (default 0.0)
-
-        Parameters:
-        file: an instance of the AudioFile class.
-        windowLength: length of the fft window (in samples)
-        windowHop: hop size of the fft window (in samples)
-        scale_audio: if set as True, the signal samples are scale between
-            -1 and 1 (as the audio convention). If false the signal samples
-            remains Integers (as output from scipy.io.wavfile)
-        square: if set as True, the spectrogram is computed as the square of
-            the magnitude of the fft. If not, it is the magnitude of the fft.
-        hamming: if set as True, the spectrogram use a correlation
-            with a hamming window.
-        centered: if set as true, each resulting fft is centered on the
-            corresponding sliding window
-        normalized: if set as true, divide all values by the maximum value
-    """
-
-    niquist = fs / 2
-    W = scipy.signal.get_window(windowType, windowLength, fftbins=False)
-
-    if centered:
-        time_shift = int(windowLength / 2)
-        times = range(time_shift, len(signal) + 1 - time_shift, windowHop)  # centered
-        frames = [signal[i - time_shift:i + time_shift] * W for i in times]  # centered frames
-    else:
-        times = np.arange(0, len(signal) - windowLength, windowHop)
-        frames = [signal[int(i):int(i) + windowLength] * W for i in times]
-
-    if square:
-        spectro = [abs(np.fft.fft(frame, windowLength))[0:windowLength // 2] ** 2 for frame in frames]
-    else:
-        spectro = [abs(np.fft.fft(frame, windowLength))[1:windowLength // 2 + 1] for frame in frames]
-
-    # set the spectro in a friendly way
-    spectro = np.transpose(spectro)
-
-    if normalized:
-        # set the maximum value to 1 y
-        spectro = spectro / np.max(spectro)
-
-    # vector of frequency<-bin in the spectrogram
-    frequencies = [
-        i * niquist / float(windowLength / 2) for i in range(windowLength // 2)
-    ]
-
-    return spectro, frequencies
-
-
-def compute_ACI(spectro, wl, f, nb_windows, flim=None):
-    """
-        From https://github.com/patriceguyot/Acoustic_Indices and modified to
-        match ACI from seewave R package
-        Compute the Acoustic Complexity Index from the spectrogram
-        of an audio signal.
-
-        Reference: Pieretti N, Farina A, Morri FD (2011) A new methodology
-        to infer the singing activity of an avian community: the
-        Acoustic Complexity Index (ACI). Ecological Indicators, 11, 868-873.
-
-        Ported from the soundecology R package.
-
-        spectro: the spectrogram of the audio signal
-        j_bin: temporal size of the frame (in samples)
-        flim: freq bounds of freq band to analyze in kHz
-    """
-
-    l = spectro.shape[1]
-    times = np.array([
-        (int(l / nb_windows * (j-1) ), int(l / nb_windows * j)-1)
-        for j in range(1, nb_windows+1)
-    ])
-
-    print(times)
-
-    if flim is not None:
-        flim = flim * 1000 * wl/f
-        spectro = spectro[int(flim[0]): int(flim[1]), :]
-
-    # sub-spectros of temporal size j
-    jspecs = [np.array(spectro[:, i[0]: i[1] + 1]) for i in times]
-    print(jspecs)
-
-    # list of ACI values on each jspecs
-    aci = [
-        np.sum(np.sum(abs(np.diff(jspec)), axis=1)
-        / np.sum(jspec, axis=1)) for jspec in jspecs
-    ]
-
-    main_value = np.sum(aci)
-    temporal_values = aci
-
-    return main_value, temporal_values
-
 def formatComplexResults(value):
     """
     Results containing complex values are reformatted following
@@ -160,32 +47,108 @@ def formatComplexResults(value):
 
     return valueAsScalaFormat
 
+
+def compute_ACI(spectro, fs, nb_windows, flim=None):
+    """
+        From https://github.com/patriceguyot/Acoustic_Indices and modified to
+        match ACI from seewave R package
+        Compute the Acoustic Complexity Index from the spectrogram
+        of an audio signal.
+
+        Reference: Pieretti N, Farina A, Morri FD (2011) A new methodology
+        to infer the singing activity of an avian community: the
+        Acoustic Complexity Index (ACI). Ecological Indicators, 11, 868-873.
+
+        Ported from the soundecology R package.
+
+        spectro: the spectrogram of the audio signal
+        j_bin: temporal size of the frame (in samples)
+        flim: freq bounds of freq band to analyze in kHz
+    """
+
+    spectrumTemporalSize = spectro.shape[1]
+    times = np.array([
+        (int(spectrumTemporalSize / nb_windows * (j-1) ),
+        int(spectrumTemporalSize / nb_windows * j)-1)
+        for j in range(1, nb_windows+1)
+    ])
+
+    if flim is not None:
+        flim = 2 * flim * spectro.shape[0] / fs
+        print("flim " + str(flim) + " interval " + str(flim[1] - flim[0]))
+        print("nfft {}".format(spectro.shape[0]))
+        spectro = spectro[int(flim[0]): int(flim[1]), :]
+        print("cut spectro shape {}".format(spectro.shape))
+
+
+    jspecs = [np.array(spectro[:, i[0]: i[1] + 1]) for i in times]
+
+    # list of ACI values on each jspecs
+    aci = [
+        np.sum(np.sum(abs(np.diff(jspec)), axis=1)
+        / np.sum(jspec, axis=1)) for jspec in jspecs
+    ]
+
+    main_value = np.sum(aci)
+    temporal_values = aci
+
+    return main_value, temporal_values
+
 if __name__ == '__main__':
-    signal = np.arange(16 * 16 + 1)
+    np.random.seed(0)
+    signal = np.arange(256) + np.random.normal(0.1, 1, size=256)
     fs = 100.0
+    windowSize = 16
+    nbWind = 8
 
-    wl = 16
-    nbWind = 3
-
-    fFFT, vFFT = scipy.signal.stft(
+    spectrum = scipy.signal.stft(
         x=signal, fs=fs, window='boxcar', noverlap=0,
-        nperseg=wl, nfft=wl, detrend=False,
+        nperseg=windowSize, nfft=windowSize, detrend=False,
         return_onesided=True, boundary=None,
-        padded=False, axis=-1)[::2]
+        padded=False, axis=-1)[-1]
 
-    spec = abs(vFFT)
-    print(len(spec))
+
+    amplitudeSpectrum = abs(spectrum)
+    print("fft shape" + str(amplitudeSpectrum.shape))
 
     np.set_printoptions(threshold=sys.maxsize)
     np.set_printoptions(precision=16)
     # f = open("/tmp/fftA.json", "w")
-    # f.write(json.dumps(formatComplexResults(vFFT).tolist()))
+    # f.write(json.dumps(formatComplexResults(spectrum).tolist()))
     # f.close()
-    # print(formatComplexResults(vFFT))
+    # print(formatComplexResults(spectrum))
 
-    fl = np.array([0.03, 0.08])
-    aci, temp_val = compute_ACI(spec, wl, fs, nb_windows= nbWind, flim=fl)
-    print("flim " + str(fl * 1000 * wl/fs))
+    fl = np.array([20, 80])
 
-    print(aci)
+    print("5 win")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=5, flim=None)
     print(temp_val)
+    print(aci)
+    print("\n")
+
+
+    print("8 win")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=8, flim=None)
+    print(temp_val)
+    print(aci)
+    print("\n")
+
+
+    print("4 win fl 10-40")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=4, flim=np.array([10, 40]))
+    print(temp_val)
+    print(aci)
+    print("\n")
+
+
+    print("8 win fl 10-40")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=8, flim=np.array([10, 40]))
+    print(temp_val)
+    print(aci)
+    print("\n")
+
+    print("8 win fl 12.24, 31.424")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=8, flim=np.array([12.24, 31.424]))
+    print(temp_val)
+    print(aci)
+    print("\n")

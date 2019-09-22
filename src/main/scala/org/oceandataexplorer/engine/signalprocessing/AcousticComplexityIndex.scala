@@ -104,7 +104,7 @@ case class AcousticComplexityIndex
     // if a analysis band is specified
     val spectrumToAnalyse = if (analysisBandProvided){
       spectrum.map(fft => fft.slice(analysisWindowStart, analysisWindowEnd))
-    } else {spectrum}
+    } else {spectrum.map(_.drop(2))}
 
     // Divide the number of columns into equal bins within
     // the analysis frequency range

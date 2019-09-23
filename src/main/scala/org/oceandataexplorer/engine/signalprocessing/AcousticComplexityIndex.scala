@@ -41,26 +41,33 @@ case class AcousticComplexityIndex
   lowFreqBound: Option[Double] = None,
   highFreqBound: Option[Double] = None
 ) {
-
-  /**
-   * array of all optional parameters for sanity check
-   */
-  val optionalParams = Array(
-    samplingRate, nfft, lowFreqBound, highFreqBound
-  )
-
-  /**
-   * were all optional parameters
-   */
-  val analysisBandProvided: Boolean = optionalParams
-    .map(_.isDefined).reduce((a,b) => a && b)
-
-  if (optionalParams.map(_.isDefined).reduce((a,b) => a || b)
-    && !analysisBandProvided
+  // if a frequency bound is defined, sample rate & nfft must also be defined
+  if ((lowFreqBound.isDefined || highFreqBound.isDefined) &&
+    (!nfft.isDefined && samplingRate.isDefined)
   ) {
     throw new IllegalArgumentException(
-      "Some parameters were not defined for the computation of ACI " +
-      "on a specific frequency band."
+      "Incorrect parameters for analysis band specification " +
+      "nfft and samplingRate must be provided."
+    )
+  }
+
+  if (lowFreqBound.exists(lbf =>
+    (lbf < 0.0) || (lbf > highFreqBound.getOrElse(samplingRate.get / 2.0))
+  )) {
+    throw new IllegalArgumentException(
+      s"Incorrect lowFreqBound (${lowFreqBound.get}) for ACI, it must be " +
+      s"positive and smaller than " +
+      s"(${highFreqBound.getOrElse(samplingRate.get / 2.0)})"
+    )
+  }
+
+  if (highFreqBound.exists(hfb =>
+    (hfb > (samplingRate.get / 2.0)) || (hfb < lowFreqBound.getOrElse(0.0))
+  )) {
+    throw new IllegalArgumentException(
+      s"Incorrect highFreqBound (${highFreqBound.get}) for ACI, it must be " +
+      s"smaller than (${samplingRate.get / 2.0}) " +
+      s"and higher than (${lowFreqBound.getOrElse(0.0)})"
     )
   }
 
@@ -70,27 +77,34 @@ case class AcousticComplexityIndex
   lazy val nfftEven: Boolean = nfft.get % 2 == 0
 
   /**
-   * Index within the spectrum at which the analysis window starts
+   * Index within the spectrum at which the analysis window starts and ends
    */
-  lazy val analysisWindowStart: Int = 2 * (
-    lowFreqBound.get * (nfft.get + (if (nfftEven) 2 else 1)) / samplingRate.get
-  ).toInt
+  lazy val (analysisWindowStart, analysisWindowEnd): (Int, Int) = {
+    if (lowFreqBound.isDefined || highFreqBound.isDefined) {
+      (
+        2 * math.max((lowFreqBound.getOrElse(0.0) * (
+          nfft.get + (if (nfftEven) 2 else 1)) / samplingRate.get
+          ).toInt, 1
+        ),
+        2 * (
+          highFreqBound.getOrElse(samplingRate.get / 2.0) * (
+            nfft.get + (if (nfftEven) 2 else 1)) / samplingRate.get
+        ).toInt
+      )
+    } else {
+      (2, Int.MaxValue)
+    }
+  }
+
 
   /**
-   * Index within the spectrum at which the analysis window ends
-   */
-  lazy val analysisWindowEnd: Int = 2 * (
-    highFreqBound.get * (nfft.get + (if (nfftEven) 2 else 1)) / samplingRate.get
-  ).toInt
-
-
-  /**
-   * Method computing ACI given a one-sided spectrum.
+   * Method computing temporal values of ACI given a one-sided spectrum.
    *
    * @param spectrum The one-sided ffts computed by FFT class
-   * @return The Acoustic Complexity Index computed over the spectrum
+   * @return The Acoustic Complexity Index temporal values computed
+   * over the spectrum
    */
-  def compute(
+  def computeTemporalValues(
     spectrum: Array[Array[Double]]
   ): Array[Double] = {
     // Extract the total number of columns of the spectrogram
@@ -101,11 +115,6 @@ case class AcousticComplexityIndex
         s"Incorrect number of windows ($nAciWindows) for ACI, must be lower " +
         s"than half the spectrum temporal size ($spectrumTemporalSize)")}
 
-    // if a analysis band is specified
-    val spectrumToAnalyse = if (analysisBandProvided){
-      spectrum.map(fft => fft.slice(analysisWindowStart, analysisWindowEnd))
-    } else {spectrum.map(_.drop(2))}
-
     // Divide the number of columns into equal bins within
     // the analysis frequency range
     val times = (0 until nAciWindows).map(
@@ -113,7 +122,8 @@ case class AcousticComplexityIndex
         (spectrumTemporalSize / nAciWindows.toDouble * (j + 1)).toInt -1))
 
     // Compute amplitude spectrum
-    val transposedSpectrum = spectrumToAnalyse
+    val transposedSpectrum = spectrum
+      .map(fft => fft.slice(analysisWindowStart, analysisWindowEnd))
       .map(fft => fft.grouped(2)
         .map(z => math.sqrt(z(0) * z(0) + z(1) * z(1)))
         .toArray).transpose
@@ -141,4 +151,15 @@ case class AcousticComplexityIndex
       diff.map(_.sum).sum
     })
   }
+
+  /**
+   * Method computing the total value of ACI of a one-sided spectrum.
+   *
+   * @param spectrum The one-sided ffts computed by FFT class
+   * @return The Acoustic Complexity Index total value computed
+   * over the spectrum
+   */
+  def compute(
+    spectrum: Array[Array[Double]]
+  ): Double = computeTemporalValues(spectrum).sum
 }

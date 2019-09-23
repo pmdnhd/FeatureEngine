@@ -74,10 +74,13 @@ def compute_ACI(spectro, fs, nb_windows, flim=None):
     ])
 
     if flim is not None:
-        flim = 2 * flim * spectro.shape[0] / fs
+        # +1 for the missing continuous component
+        flim = 2 * flim * (1 + spectro.shape[0]) / fs - 1
         # print("flim " + str(flim) + " interval " + str(flim[1] - flim[0]))
         # print("nfft {}".format(spectro.shape[0]))
-        spectro = spectro[int(flim[0]): int(flim[1]), :]
+        print(flim)
+        print("COMP {}".format(max(flim[0], 0)))
+        spectro = spectro[int(max(flim[0],0)): int(flim[1]), :]
         # print("cut spectro shape {}".format(spectro.shape))
 
 
@@ -95,37 +98,7 @@ def compute_ACI(spectro, fs, nb_windows, flim=None):
     return main_value, temporal_values
 
 if __name__ == '__main__':
-    ########################## SPECTRUM A
-    signal = np.arange(70)
-    fs = 100.0
-    windowSize = 8
-
-    spectrum = scipy.signal.stft(
-        x=signal, fs=fs, window='boxcar', noverlap=0,
-        nperseg=windowSize, nfft=windowSize, detrend=False,
-        return_onesided=True, boundary=None,
-        padded=False, axis=-1)[-1]
-
-    amplitudeSpectrum = abs(spectrum)
-
-    np.set_printoptions(threshold=sys.maxsize)
-    np.set_printoptions(precision=16)
-    f = open("/tmp/fftA.json", "w")
-    f.write(json.dumps(formatComplexResults(spectrum).tolist()))
-    f.close()
-
-    print("3 win spectrum A")
-    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=3, flim=None)
-    print(temp_val)
-    print(aci)
-    print("\n")
-
-    print("4 win spectrum A")
-    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=4, flim=None)
-    print(temp_val)
-    print(aci)
-    print("\n")
-
+    # spectrum A was dropped, in scala spectrum A = B here, and B = C here
     ########################## SPECTRUM B
     np.random.seed(0)
     signal = np.arange(256) + np.random.normal(0.1, 1, size=256)
@@ -139,7 +112,7 @@ if __name__ == '__main__':
         padded=False, axis=-1)[-1]
 
 
-    amplitudeSpectrum = abs(spectrum)
+    amplitudeSpectrum = abs(spectrum)[1:]
 
     f = open("/tmp/fftB.json", "w")
     f.write(json.dumps(formatComplexResults(spectrum).tolist()))
@@ -165,6 +138,17 @@ if __name__ == '__main__':
     print(aci)
     print("\n")
 
+    print("4 win fl 0-40 spectrum B")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=4, flim=np.array([0, 40]))
+    print(temp_val)
+    print(aci)
+    print("\n")
+
+    print("4 win fl 10- spectrum B")
+    aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=4, flim=np.array([10, 50]))
+    print(temp_val)
+    print(aci)
+    print("\n")
 
     print("8 win fl 10-40 spectrum B")
     aci, temp_val = compute_ACI(amplitudeSpectrum, fs, nb_windows=8, flim=np.array([10, 40]))
@@ -192,7 +176,7 @@ if __name__ == '__main__':
         padded=False, axis=-1)[-1]
 
 
-    amplitudeSpectrum = abs(spectrum)
+    amplitudeSpectrum = abs(spectrum)[1:]
 
     f = open("/tmp/fftC.json", "w")
     f.write(json.dumps(formatComplexResults(spectrum).tolist()))

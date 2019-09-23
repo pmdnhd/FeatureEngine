@@ -32,61 +32,6 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
   val maxRMSE = 1E-13
 
   /*
-    signal = np.arange(70)
-    fs = 100.0
-    windowSize = 8
-
-    spectrum = scipy.signal.stft(
-        x=signal, fs=fs, window='boxcar', noverlap=0,
-        nperseg=windowSize, nfft=windowSize, detrend=False,
-        return_onesided=True, boundary=None,
-        padded=False, axis=-1)[-1]
-  */
-  val spectrumA = Array(
-    Array(
-      3.5,                0.0,                -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      11.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      19.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      27.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      35.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      43.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      51.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    ),Array(
-      59.5,                0.0,               -0.5,
-      1.2071067811865475,-0.5,                0.5,
-      -0.5,                0.2071067811865476,-0.5,
-      0.0
-    )
-  )
-
-  /*
     np.random.seed(0)
     signal = np.arange(256) + np.random.normal(0.1, 1, size=256)
     fs = 100.0
@@ -99,7 +44,7 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
         padded=False, axis=-1)[-1]
   */
 
-  val spectrumB = Array(
+  val spectrumA = Array(
     Array(8.264924942948232, 0.0, -0.2962765239002474, 2.4151368643115614,
     -0.6420892836310677, 0.9951640863954379, -0.4953384824843767,
     0.7793390930627759, -0.38920649975416044, 0.7451456861449368,
@@ -196,7 +141,7 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
         return_onesided=True, boundary=None,
         padded=False, axis=-1)[-1]
   */
-  val spectrumC = Array(
+  val spectrumB = Array(
     Array(7.78700831731983, 0.0, -0.27222290605029115, 2.2340754178182918,
       -0.6906360755939576, 0.9842593452943409, -0.5316198085817605,
       0.7092510713660868, -0.2528528482813781, 0.6310961265083486,
@@ -219,78 +164,49 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
       0.4236178046557305, -0.3161803668997443, 0.22276732270550692)
   )
 
-  it should "compute ACI with 3 windows on spectrumA" in {
-    val aciClass = AcousticComplexityIndex(3)
-    val acis = aciClass.compute(spectrumA)
-    val aciMainValue = acis.sum
-
-    val expectedAcis = Array(
-      0.5333333333333333, 0.19393939393939394, 0.10355987055016182
-    )
-    val expectedAciMainValue = 0.8308325978228891
-
-    math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
-    acis should rmseMatch(expectedAcis)
-  }
-
-  it should "compute ACI with 4 windows on spectrumA" in {
-    val aciClass = AcousticComplexityIndex(4)
-    val acis = aciClass.compute(spectrumA)
-    val aciMainValue = acis.sum
-
-    val expectedAcis = Array(
-      0.5333333333333333, 0.1702127659574468,
-      0.10126582278481013, 0.07207207207207207
-    )
-    val expectedAciMainValue = 0.8768839941476624
-
-    math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
-    acis should rmseMatch(expectedAcis)
-  }
-
-  it should "compute ACI with 5 windows on spectrumB" in {
+  it should "compute ACI with 5 windows on spectrumA" in {
     val aciClass = AcousticComplexityIndex(5)
-    val acis = aciClass.compute(spectrumB)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
 
     val expectedAcis = Array(
-      2.282684482723097, 1.4464964361302681, 1.8670937034721584,
-      1.5488630807305044, 2.065142672397222
+      1.8478795964334873, 1.2932370887070952, 1.779623265592111,
+      1.4861965763159088, 2.0118908926380348
     )
-    val expectedAciMainValue = 9.21028037545325
+    val expectedAciMainValue = 8.418827419686636
 
     math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
     acis should rmseMatch(expectedAcis)
   }
 
-  it should "compute ACI with 8 windows on spectrumB" in {
+  it should "compute ACI with 8 windows on spectrumA" in {
     val aciClass = AcousticComplexityIndex(8)
-    val acis = aciClass.compute(spectrumB)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
 
     val expectedAcis = Array(
-      1.9027484133079537, 0.8841730484915431, 1.308460163668774,
-      1.6732372294953477, 0.8259295849324995, 0.9903405896399253,
-      1.419172317174527, 1.3840807757878593
+      1.4182803907725403, 0.7165773426920931, 1.2043076477834411,
+      1.6026536039217776, 0.7702401168270949, 0.9466739888553486,
+      1.3809648253808735, 1.3504728664821704
     )
-    val expectedAciMainValue = 10.38814212249843
+    val expectedAciMainValue = 9.39017078271534
 
     math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
     acis should rmseMatch(expectedAcis)
   }
 
-  it should "compute ACI with 4 windows on spectrumB with frequency bounds 10-40 Hz" in {
+  it should "compute ACI with 4 windows on spectrumA with frequency bounds -40 Hz" in {
     val nbWindows = 4
     val sampleRate = Some(100.0f)
     val nfft = Some(16)
-    val lowFreqBound = Some(10.0)
+    val lowFreqBound = None
     val highFreqBound = Some(40.0)
 
     val aciClass = AcousticComplexityIndex(
       nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
     )
-    val acis = aciClass.compute(spectrumB)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
 
     val expectedAcis = Array(
       1.117474118396429, 1.4265344192744283, 1.1832740593945221, 1.0914058566759262
@@ -301,7 +217,51 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     acis should rmseMatch(expectedAcis)
   }
 
-  it should "compute ACI with 8 windows on spectrumB with frequency bounds 10-40 Hz" in {
+  it should "compute ACI with 4 windows on spectrumA with frequency bounds 10-40 Hz" in {
+    val nbWindows = 4
+    val sampleRate = Some(100.0f)
+    val nfft = Some(16)
+    val lowFreqBound = Some(10.0)
+    val highFreqBound = Some(40.0)
+
+    val aciClass = AcousticComplexityIndex(
+      nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
+    )
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
+
+    val expectedAcis = Array(
+      1.117474118396429, 1.4265344192744283, 1.1832740593945221, 1.0914058566759262
+    )
+    val expectedAciMainValue = 4.818688453741306
+
+    math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
+    acis should rmseMatch(expectedAcis)
+  }
+
+  it should "compute ACI with 4 windows on spectrumA with frequency bounds 10- Hz" in {
+    val nbWindows = 4
+    val sampleRate = Some(100.0f)
+    val nfft = Some(16)
+    val lowFreqBound = Some(10.0)
+    val highFreqBound = None
+
+    val aciClass = AcousticComplexityIndex(
+      nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
+    )
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
+
+    val expectedAcis = Array(
+      1.7392508863679852, 2.005679106051335, 1.4881430161530755, 2.0118908926380348
+    )
+    val expectedAciMainValue = 7.24496390121043
+
+    math.abs(expectedAciMainValue - aciMainValue) should be < maxRMSE
+    acis should rmseMatch(expectedAcis)
+  }
+
+  it should "compute ACI with 8 windows on spectrumA with frequency bounds 10-40 Hz" in {
     val nbWindows = 8
     val sampleRate = Some(100.0f)
     val nfft = Some(16)
@@ -311,12 +271,13 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     val aciClass = AcousticComplexityIndex(
       nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
     )
-    val acis = aciClass.compute(spectrumB)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
 
     val expectedAcis = Array(
-      0.9935109495019765, 0.6070493020603062, 0.8307010372284218, 1.0490981369680634,
-      0.561380901619972, 0.8033869991796203, 0.6687981760480449, 0.7501894586528493
+      0.9935109495019765, 0.6070493020603062, 0.8307010372284218,
+      1.0490981369680634, 0.561380901619972, 0.8033869991796203,
+      0.6687981760480449, 0.7501894586528493
     )
     val expectedAciMainValue = 6.264114961259255
 
@@ -324,7 +285,7 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     acis should rmseMatch(expectedAcis)
   }
 
-  it should "compute ACI with 8 windows on spectrumB with frequency bounds 12.24-31.424 Hz" in {
+  it should "compute ACI with 8 windows on spectrumA with frequency bounds 12.24-31.424 Hz" in {
     val nbWindows = 8
     val sampleRate = Some(100.0f)
     val nfft = Some(16)
@@ -334,12 +295,13 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     val aciClass = AcousticComplexityIndex(
       nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
     )
-    val acis = aciClass.compute(spectrumB)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumA)
+    val aciMainValue = aciClass.compute(spectrumA)
 
     val expectedAcis = Array(
-      0.4978986134311729, 0.27141199386549786, 0.17989528525853876, 0.5079592925894449,
-      0.4195375077744704, 0.36301600508501636, 0.5077834544256935, 0.31487787230293374
+      0.4978986134311729, 0.27141199386549786, 0.17989528525853876,
+      0.5079592925894449, 0.4195375077744704, 0.36301600508501636,
+      0.5077834544256935, 0.31487787230293374
     )
     val expectedAciMainValue = 3.0623800247327684
 
@@ -347,7 +309,7 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     acis should rmseMatch(expectedAcis)
   }
 
-  it should "compute ACI with 2 windows on spectrumC with frequency bounds 12.24-31.424 Hz" in {
+  it should "compute ACI with 2 windows on spectrumB with frequency bounds 12.24-31.424 Hz" in {
     val nbWindows = 2
     val sampleRate = Some(100.0f)
     val nfft = Some(15)
@@ -357,8 +319,8 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
     val aciClass = AcousticComplexityIndex(
       nbWindows, sampleRate, nfft, lowFreqBound, highFreqBound
     )
-    val acis = aciClass.compute(spectrumC)
-    val aciMainValue = acis.sum
+    val acis = aciClass.computeTemporalValues(spectrumB)
+    val aciMainValue = aciClass.compute(spectrumB)
 
     val expectedAcis = Array(
       0.3185170503117893, 0.21134923760242902
@@ -372,13 +334,43 @@ class TestAcousticComplexityIndex extends FlatSpec with Matchers with OdeCustomM
   it should "raise IllegalArgumentException when the number of temporal windows exceeds spectrum temporal size" in {
     the[IllegalArgumentException] thrownBy {
       val aciClass = AcousticComplexityIndex(9)
-      val acis = aciClass.compute(spectrumB)
+      val acis = aciClass.computeTemporalValues(spectrumA)
     } should have message "Incorrect number of windows (9) for ACI, must be lower than half the spectrum temporal size (16)"
   }
 
   it should "raise IllegalArgumentException when some but not all optional parameters are given" in {
     the[IllegalArgumentException] thrownBy {
-      val aciClass = AcousticComplexityIndex(9, Some(1.0f))
-    } should have message "Some parameters were not defined for the computation of ACI on a specific frequency band."
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), None, Some(1.0))
+    } should have message "Incorrect parameters for analysis band specification nfft and samplingRate must be provided."
+  }
+
+  it should "raise IllegalArgumentException lowFreqBound is negative" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), Some(256), Some(-1.0))
+    } should have message "Incorrect lowFreqBound (-1.0) for ACI, it must be positive and smaller than (0.5)"
+  }
+
+  it should "raise IllegalArgumentException lowFreqBound is higher than sampleRate / 2" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), Some(256), Some(1.0))
+    } should have message "Incorrect lowFreqBound (1.0) for ACI, it must be positive and smaller than (0.5)"
+  }
+
+  it should "raise IllegalArgumentException highFreqBound is higher than sampleRate / 2" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), Some(256), None, Some(1.0))
+    } should have message "Incorrect highFreqBound (1.0) for ACI, it must be smaller than (0.5) and higher than (0.0)"
+  }
+
+  it should "raise IllegalArgumentException highFreqBound is negative" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), Some(256), None, Some(-1.0))
+    } should have message "Incorrect highFreqBound (-1.0) for ACI, it must be smaller than (0.5) and higher than (0.0)"
+  }
+
+  it should "raise IllegalArgumentException lowFreqBound is higher than highFreqBound" in {
+    the[IllegalArgumentException] thrownBy {
+      val aciClass = AcousticComplexityIndex(9, Some(1.0f), Some(256), Some(0.4), Some(0.1))
+    } should have message "Incorrect lowFreqBound (0.4) for ACI, it must be positive and smaller than (0.1)"
   }
 }
